@@ -80,9 +80,6 @@ export class FeedbackManager {
       case 'action':
         messages.push(...this.generateActionFeedback(context));
         break;
-      case 'observation':
-        messages.push(...this.generateObservationFeedback(context));
-        break;
       case 'inquiry':
         messages.push(...this.generateInquiryFeedback(context));
         break;
@@ -163,6 +160,7 @@ export class FeedbackManager {
   /**
    * Generate feedback for observation step
    */
+  // Deprecated: observation step removed from LearningStep
   private generateObservationFeedback(context: FeedbackContext): FeedbackMessage[] {
     const messages: FeedbackMessage[] = [];
     const { foldAngle, triangle, foldPoint } = context;
@@ -358,15 +356,23 @@ export class FeedbackManager {
    * Show step-specific hint
    */
   private showStepHint(step: LearningStep): void {
-    const hints = {
-      action: '슬라이더를 오른쪽으로 움직여서 삼각형을 접어보세요.',
-      observation: '접힌 부분을 자세히 관찰하세요. 두 각이 어떻게 겹치는지 보세요.',
-      inquiry: '접기를 통해 생긴 두 삼각형을 생각해보세요.',
-      discovery: '변과 각에 주목하세요. AB=AC, AD는 공통변, 각은 이등분선으로 같아요.',
-      justification: '합동인 삼각형의 대응각은 같다는 성질을 사용하세요.'
-    };
-    
-    const hint = hints[step];
+    let hint = '';
+    switch (step) {
+      case 'action':
+        hint = '슬라이더를 오른쪽으로 움직여서 삼각형을 접어보세요.';
+        break;
+      case 'inquiry':
+        hint = '접기를 통해 생긴 두 삼각형을 생각해보세요.';
+        break;
+      case 'discovery':
+        hint = '변과 각에 주목하세요. AB=AC, AD는 공통변, 각은 이등분선으로 같아요.';
+        break;
+      case 'justification':
+        hint = '합동인 삼각형의 대응각은 같다는 성질을 사용하세요.';
+        break;
+      default:
+        hint = '';
+    }
     
     this.addMessage({
       id: `hint-${step}`,
