@@ -195,14 +195,14 @@ export class Logger {
       startTime: new Date(),
       stepDurations: {
         action: 0,
-        observation: 0,
+        misconception: 0,
         inquiry: 0,
         discovery: 0,
         justification: 0
       },
       stepAttempts: {
         action: 0,
-        observation: 0,
+        misconception: 0,
         inquiry: 0,
         discovery: 0,
         justification: 0

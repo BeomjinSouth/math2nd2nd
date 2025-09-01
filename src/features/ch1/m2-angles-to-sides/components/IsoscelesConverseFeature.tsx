@@ -112,6 +112,26 @@ const IsoscelesConverseFeature: React.FC<Props> = ({ onComplete }) => {
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto p-6">
+        {/* 좌측 상단 홈 버튼 */}
+        <motion.div 
+          className="fixed top-4 left-4 z-40"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <button
+            onClick={() => window.location.href = '/'}
+            className="backdrop-blur-sm bg-white/80 border border-white/40 rounded-2xl p-3 shadow-lg hover:bg-white/90 transition-colors group"
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-xs">🏠</span>
+              </div>
+              <span className="text-sm font-bold text-gray-700 group-hover:text-gray-900">홈</span>
+            </div>
+          </button>
+        </motion.div>
+        
         {/* 헤더: 큰 제목과 목표 배지 */}
         <motion.div 
           className="mb-12"

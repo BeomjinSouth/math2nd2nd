@@ -162,6 +162,44 @@ const IsoscelesBaseAnglesFeature: React.FC<IsoscelesBaseAnglesFeatureProps> = ({
     chipType: '', 
     chipLabel: '' 
   });
+  // 오개념 단계 다단계 퀴즈 진행 상태
+  const [misconceptionStage, setMisconceptionStage] = useState<1 | 2 | 3>(1);
+  const [misconceptionSelected, setMisconceptionSelected] = useState<Record<number, string | undefined>>({});
+  const [misconceptionCompleted, setMisconceptionCompleted] = useState(false);
+  // 오개념 단계에 진입할 때마다 초기화
+  useEffect(() => {
+    if (currentStep === 'misconception') {
+      setMisconceptionStage(1);
+      setMisconceptionSelected({});
+      setMisconceptionCompleted(false);
+    }
+  }, [currentStep]);
+
+  // 오개념 단계 선택 처리기
+  const handleMisconceptionSelect = useCallback((stage: 1 | 2 | 3, answerId: string) => {
+    setMisconceptionSelected(prev => ({ ...prev, [stage]: answerId }));
+    actions.selectAnswer(answerId);
+    if (stage === 1 && answerId === 'asa') {
+      // 바로 정답 안내 대신 이어서 2번째 문제를 제시
+      setTimeout(() => setMisconceptionStage(2), 200);
+      return;
+    }
+    if (stage === 2 && answerId === 'cong-unknown') {
+      // 두 번째 문제 정답이면 세 번째 문제로 진행
+      setTimeout(() => setMisconceptionStage(3), 200);
+      return;
+    }
+    if (stage === 3 && answerId === 'proof-conditions') {
+      // 마지막 문제를 맞히면 자동으로 다음 단계로 진행
+      setMisconceptionCompleted(true);
+      setTimeout(() => {
+        actions.proceedToNext();
+      }, 600);
+    }
+  }, [actions]);
+
+  // 오개념 단계가 완료되어야만 다음 단계 버튼을 노출합니다.
+  const canProceedToNextUi = canProceedToNext && (currentStep !== 'misconception' || misconceptionCompleted);
   
   // 단계 표시는 현재 상태를 기준으로 계산한다.
   const stepOrder = ['action', 'inquiry', 'discovery', 'misconception', 'justification'] as const;
@@ -364,6 +402,26 @@ const IsoscelesBaseAnglesFeature: React.FC<IsoscelesBaseAnglesFeatureProps> = ({
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto p-6">
+        {/* 좌측 상단 홈 버튼 */}
+        <motion.div 
+          className="fixed top-4 left-4 z-40"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <button
+            onClick={() => window.location.href = '/'}
+            className="backdrop-blur-sm bg-white/80 border border-white/40 rounded-2xl p-3 shadow-lg hover:bg-white/90 transition-colors group"
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-xs">🏠</span>
+              </div>
+              <span className="text-sm font-bold text-gray-700 group-hover:text-gray-900">홈</span>
+            </div>
+          </button>
+        </motion.div>
+        
         {/* 헤더: 큰 제목과 목표 배지 */}
         <motion.div 
           className="mb-12"
@@ -768,43 +826,115 @@ const IsoscelesBaseAnglesFeature: React.FC<IsoscelesBaseAnglesFeatureProps> = ({
                     </div>
                     <h3 className="text-2xl font-bold text-gray-800">오개념 점검</h3>
                   </div>
-                  <p className="text-gray-700 leading-relaxed mb-4">
-                    왜 ∠BAD = ∠CAD 조건 대신 BD = CD를 근거로 SSS 합동을 주장할 수 없을까요?
-                  </p>
-                  <div className="space-y-4">
-                    {[
-                      { id: 'sss', label: 'BD = CD 를 알고 있으니 SSS 합동도 사용할 수 있다' },
-                      { id: 'asa', label: '아직 삼각형 ABC와 삼각형 ACD는 합동인지 알 수 없기 때문이다' },
-                      { id: 'need-angle', label: '모르겠다.'}
-                    ].map((opt, idx) => (
-                      <motion.button
-                        key={opt.id}
-                        onClick={() => actions.selectAnswer(opt.id)}
-                        className={`w-full p-4 text-left rounded-2xl border-2 transition-all ${
-                          state.selectedAnswer === opt.id
-                            ? opt.id === 'asa'
-                              ? 'border-emerald-500 bg-emerald-50'
-                              : 'border-red-500 bg-red-50'
-                            : 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50'
-                        }`}
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.05 }}
-                      >
-                        <span className="text-lg text-gray-800">{opt.label}</span>
-                      </motion.button>
-                    ))}
-                  </div>
-                  {state.selectedAnswer === 'asa' && (
-                    <motion.div
-                      className="mt-6 p-4 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-800"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                    >
-                      정답입니다! 삼각형 ABD와 ACD의 합동을 증명하려고 하는데, BD = CD는 이 두 삼각형의 대응변이 아닙니다. 따라서 SSS 조건으로 사용할 수 없으며, SAS나 ASA 조건을 사용해야 합니다.
-                    </motion.div>
+                  {misconceptionStage === 1 && (
+                    <>
+                      <p className="text-gray-700 leading-relaxed mb-4">
+                        왜 ∠BAD = ∠CAD 조건 대신 BD = CD를 근거로 SSS 합동을 주장할 수 없을까요?
+                      </p>
+                      <div className="space-y-4">
+                        {[
+                          { id: 'sss', label: 'BD = CD 를 알고 있으니 SSS 합동도 사용할 수 있다' },
+                          { id: 'asa', label: '아직 BD = CD의 길이가 같은지 모름' },
+                          { id: 'need-angle', label: '모르겠다.'}
+                        ].map((opt, idx) => (
+                          <motion.button
+                            key={opt.id}
+                            onClick={() => handleMisconceptionSelect(1, opt.id)}
+                            className={`w-full p-4 text-left rounded-2xl border-2 transition-all ${
+                              misconceptionSelected[1] === opt.id
+                                ? opt.id === 'asa'
+                                  ? 'border-emerald-500 bg-emerald-50'
+                                  : 'border-red-500 bg-red-50'
+                                : 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50'
+                            }`}
+                            whileHover={{ scale: 1.01 }}
+                            whileTap={{ scale: 0.99 }}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                          >
+                            <span className="text-lg text-gray-800">{opt.label}</span>
+                          </motion.button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  {misconceptionStage === 2 && (
+                    <>
+                      <p className="text-gray-700 leading-relaxed mb-4">
+                        BD 와 CD 의 길이가 같은지 현재 단계에서 알 수 없다고 말하는 이유는 무엇인가요?
+                      </p>
+                      <div className="space-y-4">
+                        {[
+                          { id: 'cong-unknown', label: '삼각형 ABD 와 ACD 가 합동인지 아직 모른다. 따라서 BD 와 CD 가 같은 길이라고 말할 수 없다' },
+                          { id: 'overlap-equal', label: '접었을 때 겹쳐 보이므로 당연히 길이가 같다' },
+                          { id: 'midpoint', label: 'D 가 항상 BC 의 중점이라서 BD = CD 이다' }
+                        ].map((opt, idx) => (
+                          <motion.button
+                            key={opt.id}
+                            onClick={() => handleMisconceptionSelect(2, opt.id)}
+                            className={`w-full p-4 text-left rounded-2xl border-2 transition-all ${
+                              misconceptionSelected[2] === opt.id
+                                ? opt.id === 'cong-unknown'
+                                  ? 'border-emerald-500 bg-emerald-50'
+                                  : 'border-red-500 bg-red-50'
+                                : 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50'
+                            }`}
+                            whileHover={{ scale: 1.01 }}
+                            whileTap={{ scale: 0.99 }}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                          >
+                            <span className="text-lg text-gray-800">{opt.label}</span>
+                          </motion.button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  {misconceptionStage === 3 && (
+                    <>
+                      <p className="text-gray-700 leading-relaxed mb-4">
+                        삼각형 ABD 와 ACD 는 똑같이 생겼고 실제로도 합동인 것 같은데 왜 합동인지 알 수 없다고 했나요?
+                      </p>
+                      <div className="space-y-4">
+                        {[
+                          { id: 'proof-conditions', label: '우리는 합동임을 보이기 위해 합동 조건을 찾는 중이다. 현재 단계에서는 합동을 가정하면 안 된다' },
+                          { id: 'overlap-always', label: '접혀서 겹치면 언제나 합동이라고 이미 배웠다' },
+                          { id: 'dunno3', label: '모르겠다' }
+                        ].map((opt, idx) => (
+                          <motion.button
+                            key={opt.id}
+                            onClick={() => handleMisconceptionSelect(3, opt.id)}
+                            className={`w-full p-4 text-left rounded-2xl border-2 transition-all ${
+                              misconceptionSelected[3] === opt.id
+                                ? opt.id === 'proof-conditions'
+                                  ? 'border-emerald-500 bg-emerald-50'
+                                  : 'border-red-500 bg-red-50'
+                                : 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50'
+                            }`}
+                            whileHover={{ scale: 1.01 }}
+                            whileTap={{ scale: 0.99 }}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                          >
+                            <span className="text-lg text-gray-800">{opt.label}</span>
+                          </motion.button>
+                        ))}
+                      </div>
+                      {misconceptionSelected[3] === 'proof-conditions' && (
+                        <motion.div
+                          className="mt-6 p-4 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-800"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                        >
+                          정답입니다! 합동을 보이기 위해 합동 조건을 찾는 중이므로 아직 합동이라고 가정하면 안 됩니다. 다음 단계로 이동합니다.
+                        </motion.div>
+                      )}
+                    </>
                   )}
                 </motion.div>
               )}
@@ -959,7 +1089,7 @@ const IsoscelesBaseAnglesFeature: React.FC<IsoscelesBaseAnglesFeatureProps> = ({
               </span>
             </motion.button>
           )}
-          {canProceedToNext && (
+          {canProceedToNextUi && (
             <motion.button
               onClick={actions.proceedToNext}
               className="px-8 py-4 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-2xl hover:from-emerald-600 hover:to-green-700 transition-all duration-300 font-bold text-lg shadow-lg shadow-emerald-500/25"
@@ -1125,9 +1255,9 @@ const IsoscelesBaseAnglesFeature: React.FC<IsoscelesBaseAnglesFeatureProps> = ({
                 
                 <div className="space-y-3 mb-6">
                   {reasonModal.chipType === 'side' && [
-                    { id: 'given', label: '이등변삼각형의 주어진 조건이기 때문' },
-                    { id: 'equal', label: '두 삼각형에서 대응하는 변이기 때문' },
-                    { id: 'random', label: '그냥 눈에 보여서' }
+                    { id: 'given', label: '이등변삼각형이라고 처음에 조건이 주어졌으니까' },
+                    { id: 'equal', label: '왼쪽과 오른쪽의 두 삼각형이 합동이니까' },
+                    { id: 'random', label: '딱 보기에 같아 보임' }
                   ].map((opt, idx) => (
                     <motion.button
                       key={opt.id}
@@ -1151,8 +1281,8 @@ const IsoscelesBaseAnglesFeature: React.FC<IsoscelesBaseAnglesFeatureProps> = ({
                   
                   {reasonModal.chipType === 'angle' && [
                     { id: 'bisector', label: '접는 선이 각의 이등분선이므로 두 각이 같다' },
-                    { id: 'fold', label: '접었을 때 겹쳐지므로 같다' },
-                    { id: 'guess', label: '그냥 추측으로' }
+                    { id: 'fold', label: '접었을 때 겹쳐지니까 같겠지 뭐~' },
+                    { id: 'guess', label: '그냥 딱 보기에 같아 보인다' }
                   ].map((opt, idx) => (
                     <motion.button
                       key={opt.id}
@@ -1176,7 +1306,7 @@ const IsoscelesBaseAnglesFeature: React.FC<IsoscelesBaseAnglesFeatureProps> = ({
                   
                   {reasonModal.chipType === 'common' && [
                     { id: 'shared', label: '두 삼각형이 공통으로 가지는 변이다' },
-                    { id: 'equal-itself', label: '자기 자신과 같으므로 당연히 같다' },
+                    { id: 'equal-itself', label: 'SAS 합동이라고 배웠으니까 이거겠지 뭐~' },
                     { id: 'dunno', label: '잘 모르겠다' }
                   ].map((opt, idx) => (
                     <motion.button

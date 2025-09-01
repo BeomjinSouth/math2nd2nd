@@ -274,19 +274,71 @@ const Triangle: React.FC<TriangleProps> = ({
         {/* 각(원) 클릭 영역과 라벨. showLabels=false이면 숨깁니다 */}
         {showLabels && (
           <>
-            {/* 꼭지점 A 주변을 좌우로 넓게 나누어 클릭 가능 영역 제공 */}
-            <rect x={A.x - 40} y={A.y - 40} width={40} height={40} fill="transparent" stroke="transparent"
-              style={{ cursor: 'pointer', pointerEvents: 'all' }}
-              onMouseEnter={() => setHovered('angle-A')}
-              onMouseLeave={() => setHovered(null)}
-              onClick={() => onElementClick?.('angle-A-left')}
-            />
-            <rect x={A.x} y={A.y - 40} width={40} height={40} fill="transparent" stroke="transparent"
-              style={{ cursor: 'pointer', pointerEvents: 'all' }}
-              onMouseEnter={() => setHovered('angle-A')}
-              onMouseLeave={() => setHovered(null)}
-              onClick={() => onElementClick?.('angle-A-right')}
-            />
+            {/* 꼭지점 A 주변을 좌우로 넓게 나누어 클릭 가능 영역 제공 - 개선된 버전 */}
+            {onElementClick && (
+              <>
+                {/* 왼쪽 각 BAD 클릭 영역 - 더 크고 시각적 피드백 추가 */}
+                <g>
+                  <rect 
+                    x={A.x - 60} y={A.y - 50} width={60} height={80} 
+                    fill="transparent"
+                    stroke="transparent"
+                    strokeWidth={0}
+                    strokeDasharray="5,5"
+                    rx={8}
+                    style={{ cursor: 'pointer', pointerEvents: 'all' }}
+                    onMouseEnter={() => setHovered('angle-A-left')}
+                    onMouseLeave={() => setHovered(null)}
+                    onClick={() => {
+                      onElementClick?.('angle-A-left');
+                      onElementClick?.('angle-A'); // 기존 코드와 호환성을 위해 angle-A도 트리거
+                    }}
+                  />
+                  {hovered === 'angle-A-left' && (
+                    <text x={A.x - 30} y={A.y - 55} textAnchor="middle" fontSize={10} fill="#ef4444" fontWeight="bold">
+                      ∠BAD
+                    </text>
+                  )}
+                </g>
+                
+                {/* 오른쪽 각 CAD 클릭 영역 - 더 크고 시각적 피드백 추가 */}
+                <g>
+                  <rect 
+                    x={A.x} y={A.y - 50} width={60} height={80} 
+                    fill="transparent"
+                    stroke="transparent"
+                    strokeWidth={0}
+                    strokeDasharray="5,5"
+                    rx={8}
+                    style={{ cursor: 'pointer', pointerEvents: 'all' }}
+                    onMouseEnter={() => setHovered('angle-A-right')}
+                    onMouseLeave={() => setHovered(null)}
+                    onClick={() => {
+                      onElementClick?.('angle-A-right');
+                      onElementClick?.('angle-A'); // 기존 코드와 호환성을 위해 angle-A도 트리거
+                    }}
+                  />
+                  {hovered === 'angle-A-right' && (
+                    <text x={A.x + 30} y={A.y - 55} textAnchor="middle" fontSize={10} fill="#22c55e" fontWeight="bold">
+                      ∠CAD
+                    </text>
+                  )}
+                </g>
+                
+                {/* 중앙 분할선 표시 (접는선이 보일 때만) */}
+                {showFoldLine && (
+                  <line 
+                    x1={A.x} y1={A.y - 50} 
+                    x2={A.x} y2={A.y + 30}
+                    stroke="#6b7280"
+                    strokeWidth={1}
+                    strokeDasharray="3,3"
+                    opacity={0.5}
+                  />
+                )}
+              </>
+            )}
+            
             <circle cx={B.x} cy={B.y} r={15} fill="transparent" stroke="transparent"
               style={{ cursor: 'pointer', pointerEvents: 'all' }}
               onMouseEnter={() => setHovered('angle-B')}

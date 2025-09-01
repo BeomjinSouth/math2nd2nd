@@ -2,236 +2,362 @@
 
 /**
  * RHA 합동 학습 화면 최상위 컴포넌트
- * 이 컴포넌트는 두 직각삼각형에서 빗변과 한 예각이 같을 때
- * 내각의 합이 180°임을 이용해 나머지 각도 같아져 ASA로 귀결됨을 체험하도록 안내합니다.
+ * 이 컴포넌트는 직각-빗변-예각 조건이 어떻게 유일한 삼각형을 결정하는지 시각적으로 탐구합니다.
+ * 사용자가 참조 삼각형의 빗변을 선택한 후, 슬라이더로 E점의 위치와 각도를 조절하여
+ * F점이 가로축에 닿게 하고 목표 각도를 맞추는 과정을 통해 RHA 합동을 체험합니다.
+ * 
+ * 주요 기능:
+ * - 참조 삼각형에서 빗변 선택
+ * - 구성 영역에서 슬라이더로 삼각형 조작
+ * - 성공 시 합동 조건 확인 및 퀴즈 제공
  */
 
-import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Triangle } from '@/components/Triangle';
-import { ChipSystem } from '@/components/ChipSystem';
-import { useRhaActivity } from '../state/useRhaActivity';
-import StepIndicatorRha from './StepIndicator';
-import ProofPanelRha from './ProofPanel';
-import AngleSumAnalysisScene from './AngleSumAnalysisScene';
-import DragSummary from './DragSummary';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { GameState, Point } from '../types';
+import ReferenceTriangle from './ReferenceTriangle';
+import ConstructionArea from './ConstructionArea';
+import ControlPanel from './ControlPanel';
 
-export default function RhaFeature() {
-  const { ui, actions } = useRhaActivity();
-  // 각도 분석 전환 애니메이션: 관찰 → 크로스페이드 → 분석 장면
-  const [showAnalysis, setShowAnalysis] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
+const RhaFeature: React.FC = () => {
+  // 게임 상태 관리
+  const [gameState, setGameState] = useState<GameState>(GameState.Idle);
+  
+  // 참조 삼각형의 꼭짓점들
+  const [triangleA, setTriangleA] = useState<Point>({ x: 0, y: 0 });
+  const [triangleB, setTriangleB] = useState<Point>({ x: 0, y: 0 });
+  const [triangleC, setTriangleC] = useState<Point>({ x: 0, y: 0 });
+  
+  // 실제 정답값들 (목표값)
+  const [trueH, setTrueH] = useState<number>(0);     // 실제 빗변의 길이
+  const [trueTheta, setTrueTheta] = useState<number>(0); // 실제 목표 각도
+  
+  // 사용자가 조작하는 현재 값들
+  const [h, setH] = useState<number>(0);             // 현재 빗변 길이
+  const [theta, setTheta] = useState<number>(0);     // 현재 각도 (사용자 조작)
+  const [e, setE] = useState<number>(50);            // E점의 위치
+  
+  // 단계적 제어를 위한 상태
+  const [thetaAdjusted, setThetaAdjusted] = useState<boolean>(false); // 각도 정확 일치 여부
 
+  /**
+   * 랜덤한 직각삼각형을 생성하는 함수
+   * 빗변 길이와 예각을 랜덤으로 설정하여 새로운 문제를 만듭니다.
+   */
+  const generateRandomTriangle = useCallback(() => {
+    const h_int = Math.floor(Math.random() * 101) + 150; // 150-250 범위의 빗변 길이
+    const theta_int = Math.floor(Math.random() * 51) + 20; // 20-70도 범위의 예각
+
+    setTrueH(h_int);
+    setTrueTheta(theta_int);
+
+    // 삼각법을 이용해 삼각형 좌표 계산
+    const thetaRad = (theta_int * Math.PI) / 180;
+    const sideAB = h_int * Math.cos(thetaRad); 
+    const sideBC = h_int * Math.sin(thetaRad);
+
+    // B점을 기준점으로 설정
+    const bX = 280;
+    const bY = 280;
+
+    setTriangleB({ x: bX, y: bY });
+    setTriangleA({ x: bX, y: bY - sideAB });
+    setTriangleC({ x: bX - sideBC, y: bY });
+
+    // 상태 초기화
+    setGameState(GameState.Idle);
+    setH(0);
+    setTheta(0);
+    setE(50);
+    setThetaAdjusted(false); // 각도 정확 일치 상태 초기화
+  }, []);
+
+  // 컴포넌트 마운트 시 초기 삼각형 생성
   useEffect(() => {
-    if (ui.analyzing) {
-      setIsTransitioning(true);
-      const t = setTimeout(() => {
-        setShowAnalysis(true);
-        setIsTransitioning(false);
-      }, 700);
-      return () => clearTimeout(t);
+    generateRandomTriangle();
+  }, [generateRandomTriangle]);
+
+  /**
+   * 빗변 선택 핸들러
+   * 사용자가 참조 삼각형의 빗변을 클릭했을 때 호출됩니다.
+   */
+  const handleHypotenuseSelect = useCallback(() => {
+    if (gameState === GameState.Idle) {
+      setH(trueH);                    // 빗변 길이를 실제값으로 설정
+      setTheta(45);                   // 초기 각도를 45도로 설정
+      setGameState(GameState.Sliding); // 슬라이딩 상태로 전환
     }
-    // 분석 해제 시 즉시 원상복구
-    setShowAnalysis(false);
-    setIsTransitioning(false);
-  }, [ui.analyzing]);
+  }, [gameState, trueH]);
+  
+  // 라디안 변환값들 (계산 최적화를 위해 메모이제이션)
+  const thetaRad = useMemo(() => (theta * Math.PI) / 180, [theta]);
+  const trueThetaRad = useMemo(() => (trueTheta * Math.PI) / 180, [trueTheta]);
+  
+  /**
+   * F점의 좌표 계산
+   * 사용자가 조작하는 각도와 E점 위치를 바탕으로 F점의 좌표를 계산합니다.
+   */
+  const F = useMemo(() => {
+    if (!h) return { x: 0, y: 0 };
+    return {
+      x: -h * Math.sin(thetaRad),
+      y: e - h * Math.cos(thetaRad),
+    };
+  }, [e, h, thetaRad]);
+  
+  /**
+   * E 슬라이더의 최대값 계산
+   * 문제 해결이 가능하도록 충분한 범위를 제공합니다.
+   */
+  const eMax = useMemo(() => {
+    if(!h) return 200;
+    const target = h * Math.cos(trueThetaRad || (45 * Math.PI / 180));
+    return Math.max(target * 1.5, h, 100);
+  }, [h, trueThetaRad]);
+  
+  // 목표 E값 (정답 위치)
+  const targetE = useMemo(() => h * Math.cos(trueThetaRad), [h, trueThetaRad]);
 
+  /**
+   * 각도 자석 효과 - 정답 근처에서 자동으로 스냅
+   * 각도가 목표값의 ±2도 이내에 오면 자동으로 정답으로 조정됩니다.
+   * E 슬라이더는 각도가 정확히 일치할 때만 활성화됩니다.
+   */
+  useEffect(() => {
+    if (gameState === GameState.Sliding && h > 0) {
+      const magnetThreshold = 2.0; // 자석 효과 임계값 (도 단위)
+      const angleDiff = Math.abs(theta - trueTheta);
+      
+      if (angleDiff <= magnetThreshold && angleDiff > 0.0001) {
+        // 부드러운 애니메이션으로 정답에 스냅
+        const snapTimer = setTimeout(() => {
+          setTheta(trueTheta);
+          setThetaAdjusted(true); // 정확 일치로 표시
+        }, 150);
+        return () => clearTimeout(snapTimer);
+      }
+      
+      // 정확히 일치 여부를 상시 반영
+      setThetaAdjusted(angleDiff < 0.0001);
+    }
+  }, [theta, trueTheta, gameState, h]);
+
+  /**
+   * 성공 조건 체크
+   * F점이 가로축에 충분히 가깝고 각도가 목표값에 충분히 가까운지 확인합니다.
+   */
+  useEffect(() => {
+    if (gameState === GameState.Sliding) {
+      const positionTolerance = 1.5;  // 위치 허용 오차
+      const angleTolerance = 1.0;     // 각도 허용 오차 (도 단위)
+      
+      if (Math.abs(F.y) <= positionTolerance && Math.abs(theta - trueTheta) <= angleTolerance) {
+        setE(targetE);          // 정확한 위치로 스냅
+        setTheta(trueTheta);    // 정확한 각도로 스냅
+        setGameState(GameState.Success); // 성공 상태로 전환
+      }
+    }
+  }, [F.y, gameState, targetE, theta, trueTheta]);
+  
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white p-4 max-w-4xl mx-auto">
-      {/* 헤더 */}
-      <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-1">직각삼각형 RHA 합동</h1>
-        <p className="text-sm text-gray-600">단계 1 / 4</p>
-      </div>
-
-      {/* 두 삼각형 탐색하기 섹션 */}
-      <div className="bg-gradient-to-r from-cyan-400 to-blue-600 rounded-2xl p-6 mb-6 text-white">
-        <div className="flex items-center gap-3 mb-4">
-          <span className="text-2xl">🔍</span>
-          <h2 className="text-xl font-semibold">두 삼각형 탐색하기</h2>
-        </div>
-        <p className="text-base opacity-90">
-          두 직각삼각형에서 어떤 조건이 주어졌는지 관찰해보세요.
-        </p>
-      </div>
-
-      {/* 분석 실험하기 섹션 */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 mb-6">
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">📏</span>
-            <h2 className="text-lg font-semibold text-gray-800">분석 실험하기</h2>
-          </div>
-        </div>
-        
-        <div className="p-8">
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-8 mb-6">
-            <div className="relative w-full max-w-2xl h-64 mx-auto">
-              {/* 기존 두 삼각형 레이어 */}
-              <motion.div
-                className="absolute inset-0 flex gap-8 justify-center items-center"
-                animate={{ opacity: showAnalysis ? 0 : 1 }}
-                transition={{ duration: 0.4 }}
-              >
-                {/* 왼쪽 삼각형 */}
-                <motion.div
-                  className="w-56 h-48"
-                  animate={{ x: ui.analyzing || isTransitioning ? -20 : 0 }}
-                  transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-                >
-                  <Triangle
-                    triangle={ui.triangleA}
-                    highlightedElements={ui.highlights}
-                    showFoldLine={false}
-                    showInnerPieces={false}
-                    onElementClick={actions.onTriangleElementClick}
-                    className="w-56 h-48"
-                    showLabels={true}
-                    labels={{ A: 'A', B: 'B', C: 'C' }}
-                  />
-                </motion.div>
-
-                {/* 오른쪽 삼각형 */}
-                <motion.div
-                  className="w-56 h-48"
-                  animate={{ x: ui.analyzing || isTransitioning ? -200 : 0 }}
-                  transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-                >
-                  <Triangle
-                    triangle={ui.triangleB}
-                    highlightedElements={ui.highlights}
-                    showFoldLine={false}
-                    showInnerPieces={false}
-                    onElementClick={actions.onTriangleElementClick}
-                    className="w-56 h-48"
-                    showLabels={true}
-                    labels={{ A: 'D', B: 'F', C: 'E' }}
-                  />
-                </motion.div>
-              </motion.div>
-
-              {/* 각도 분석 장면 레이어 */}
-              <motion.div
-                className="absolute inset-0 flex justify-center items-center"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: showAnalysis ? 1 : 0 }}
-                transition={{ duration: 0.4 }}
-              >
-                <AngleSumAnalysisScene />
-              </motion.div>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-900 font-sans">
+      {/* 개선된 헤더 섹션 */}
+      <header className="w-full max-w-7xl mx-auto text-center mb-6">
+        <div className="relative">
+          {/* 배경 그래디언트 효과 */}
+          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-purple-500/10 rounded-xl blur-lg"></div>
+          
+          <div className="relative bg-gray-800/80 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+            <div className="flex items-center justify-center gap-3 mb-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-lg flex items-center justify-center">
+                <span className="text-white text-lg font-bold">R</span>
+              </div>
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center">
+                <span className="text-white text-lg font-bold">H</span>
+              </div>
+              <div className="w-8 h-8 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg flex items-center justify-center">
+                <span className="text-white text-lg font-bold">A</span>
+              </div>
+            </div>
+            
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
+              RHA 합동 시각적 탐구
+            </h1>
+            
+            {/* 단계 표시 */}
+            <div className="flex items-center justify-center gap-2 mt-3">
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <span className="w-2 h-2 bg-cyan-400 rounded-full"></span>
+                <span>빗변 선택</span>
+              </div>
+              <span className="text-gray-600">→</span>
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
+                <span>각도 조절</span>
+              </div>
+              <span className="text-gray-600">→</span>
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <span className="w-2 h-2 bg-blue-400 rounded-full"></span>
+                <span>위치 맞추기</span>
+              </div>
+              <span className="text-gray-600">→</span>
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <span className="w-2 h-2 bg-green-400 rounded-full"></span>
+                <span>합동 완성</span>
+              </div>
             </div>
           </div>
-          
-          <div className="flex justify-center">
-            <button
-              onClick={actions.toggleAnalysis}
-              className="px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl hover:from-cyan-600 hover:to-blue-700 transition-all transform hover:scale-105 shadow-lg font-medium text-lg flex items-center gap-2"
-            >
-              <span>{ui.analyzing ? '📏' : '🔍'}</span>
-              {ui.analyzing ? '분석 해제' : '각도 분석'}
-            </button>
-          </div>
         </div>
-      </div>
-
-      {/* 3개의 카드 섹션 */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow p-4 text-center">
-          <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
-            <span className="text-orange-600 font-bold">∠</span>
+      </header>
+      
+      {/* 메인 콘텐츠 영역: 3열 레이아웃 */}
+      <main className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* 참조 삼각형 영역 */}
+        <div className="bg-gray-800/90 backdrop-blur-sm p-6 rounded-xl shadow-2xl border border-gray-700/50 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-blue-500"></div>
+          
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 bg-cyan-500 rounded-lg flex items-center justify-center">
+              <span className="text-white text-sm font-bold">📐</span>
+            </div>
+            <h3 className="text-xl font-bold text-cyan-400">참조 삼각형</h3>
+            <span className="text-xs text-gray-400 bg-gray-700 px-2 py-1 rounded">ABC</span>
           </div>
-          <h3 className="text-sm font-semibold text-gray-800 mb-2">직각 확인</h3>
-          <p className="text-xs text-gray-600">
-            두 삼각형 모두 직각을 가지고 있는지 확인해보세요.
+          
+          {/* 초기 안내 메시지 */}
+          {gameState === GameState.Idle && (
+            <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 rounded-lg p-4 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-yellow-400 text-lg">👆</span>
+                <span className="text-yellow-300 font-semibold">시작하기</span>
+              </div>
+              <p className="text-sm text-gray-300">
+                아래 삼각형에서 <span className="text-yellow-400 font-semibold">노란색 빗변 AC</span>를 클릭해주세요!
+              </p>
+            </div>
+          )}
+          
+          <p className="text-sm text-gray-400 mb-4">
+            노란색 빗변을 클릭하여 RHA 탐구를 시작하세요
           </p>
+          <ReferenceTriangle A={triangleA} B={triangleB} C={triangleC} onHypotenuseSelect={handleHypotenuseSelect} gameState={gameState} />
         </div>
         
-        <div className="bg-white rounded-lg shadow p-4 text-center">
-          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
-            <span className="text-green-600 font-bold">| |</span>
+        {/* 구성 영역 */}
+        <div className="bg-gray-800/90 backdrop-blur-sm p-6 rounded-xl shadow-2xl border border-gray-700/50 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
+          
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+              <span className="text-white text-sm font-bold">🔧</span>
+            </div>
+            <h3 className="text-xl font-bold text-blue-400">구성 영역</h3>
+            <span className="text-xs text-gray-400 bg-gray-700 px-2 py-1 rounded">DEF</span>
           </div>
-          <h3 className="text-sm font-semibold text-gray-800 mb-2">길이 비교</h3>
-          <p className="text-xs text-gray-600">
-            빗변과 다른 한 변의 길이가 어떻게 되어 있는지 살펴보세요.
-          </p>
+          <p className="text-sm text-gray-400 mb-4">슬라이더로 삼각형을 조작하여 RHA 조건을 완성하세요</p>
+          <ConstructionArea e={e} h={h} theta={theta} F={F} gameState={gameState} />
         </div>
-        
-        <div className="bg-white rounded-lg shadow p-4 text-center">
-          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
-            <span className="text-blue-600 font-bold">📏</span>
-          </div>
-          <h3 className="text-sm font-semibold text-gray-800 mb-2">각도 분석</h3>
-          <p className="text-xs text-gray-600">
-            180° 성질로 나머지 각도가 같아짐을 확인해보세요.
-          </p>
-        </div>
-      </div>
 
-      {/* 이 단계에서 배우는 것 */}
-      <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-        <div className="flex items-center gap-3 mb-4">
-          <span className="text-2xl">🎓</span>
-          <h2 className="text-lg font-semibold text-gray-800">이 단계에서 배우는 것</h2>
+        {/* 제어판 영역 */}
+        <div className="bg-gray-800/90 backdrop-blur-sm p-6 rounded-xl shadow-2xl border border-gray-700/50 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-pink-500"></div>
+          <ControlPanel 
+            gameState={gameState}
+            h={h}
+            theta={theta}
+            trueTheta={trueTheta}
+            e={e}
+            F={F}
+            eMax={eMax}
+            thetaAdjusted={thetaAdjusted}
+            onSliderChange={(newE) => {
+              if ((gameState === GameState.Sliding || gameState === GameState.Success) && thetaAdjusted) {
+                if (gameState !== GameState.Success) setGameState(GameState.Sliding);
+                setE(newE);
+              }
+            }}
+            onThetaSliderChange={(newTheta) => {
+              if (gameState === GameState.Sliding || gameState === GameState.Success) {
+                if (gameState !== GameState.Success) setGameState(GameState.Sliding);
+                setTheta(newTheta);
+                setThetaAdjusted(Math.abs(newTheta - trueTheta) < 0.0001);
+              }
+            }}
+            onReset={generateRandomTriangle}
+          />
         </div>
-        
-        <div className="grid grid-cols-2 gap-6">
-          <div className="flex items-start gap-3">
-            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-white text-xs font-bold">✓</span>
-            </div>
-            <div>
-              <h3 className="font-medium text-gray-800 mb-1">두 직각삼각형의 특성 파악하기</h3>
-            </div>
-          </div>
-          
-          <div className="flex items-start gap-3">
-            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-white text-xs font-bold">✓</span>
-            </div>
-            <div>
-              <h3 className="font-medium text-gray-800 mb-1">변의 길이를 통한 도형 성질 관찰</h3>
-            </div>
-          </div>
-          
-          <div className="flex items-start gap-3">
-            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-white text-xs font-bold">✓</span>
-            </div>
-            <div>
-              <h3 className="font-medium text-gray-800 mb-1">내각의 합 180° 성질 발견하기</h3>
-            </div>
-          </div>
-          
-          <div className="flex items-start gap-3">
-            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-white text-xs font-bold">✓</span>
-            </div>
-            <div>
-              <h3 className="font-medium text-gray-800 mb-1">합동 조건의 단서 찾기</h3>
-            </div>
-          </div>
-        </div>
-      </div>
+      </main>
 
-      {/* 하단 네비게이션 */}
-      <div className="flex justify-between items-center">
-        <button className="px-6 py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium text-gray-700">
-          이전 단계
-        </button>
-        
-        <div className="flex gap-2">
-          <span className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-medium">1</span>
-          <span className="w-8 h-8 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center text-sm font-medium">2</span>
-          <span className="w-8 h-8 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center text-sm font-medium">3</span>
-          <span className="w-8 h-8 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center text-sm font-medium">4</span>
+      {/* 성공 모달 */}
+      {gameState === GameState.Success && (
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 animate-success-fade-in">
+          <div className="relative max-w-md mx-4">
+            <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 via-emerald-500/20 to-teal-500/20 rounded-2xl blur-xl animate-pulse"></div>
+            <div className="relative bg-gray-800/95 backdrop-blur-sm border-2 border-green-500/50 rounded-2xl shadow-2xl p-8 text-center transform animate-success-scale-in">
+              <div className="relative mb-6">
+                <div className="w-20 h-20 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto">
+                  <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                </div>
+                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-2">
+                  <span className="text-yellow-400 text-2xl animate-bounce">✨</span>
+                </div>
+              </div>
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent mb-3">RHA 합동 성공!</h2>
+              <div className="bg-gray-700/50 rounded-lg p-6 mb-6">
+                <div className="text-center mb-4">
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                    <span className="text-green-400 font-semibold text-lg">직각(R)</span>
+                    <span className="text-gray-400">+</span>
+                    <span className="text-blue-400 font-semibold text-lg">빗변(H)</span>
+                    <span className="text-gray-400">+</span>
+                    <span className="text-purple-400 font-semibold text-lg">예각(A)</span>
+                  </div>
+                  <p className="text-gray-300 text-base leading-relaxed">
+                    조건이 일치하여 단 하나의 삼각형이<br/>
+                    <span className="text-cyan-400 font-semibold">유일하게 결정</span>되었습니다!
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mb-6 text-sm">
+                <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-3">
+                  <div className="text-blue-300 font-medium">빗변 길이</div>
+                  <div className="text-white font-bold">{(h / 25).toFixed(1)} cm</div>
+                </div>
+                <div className="bg-green-900/30 border border-green-500/30 rounded-lg p-3">
+                  <div className="text-green-300 font-medium">완성 각도</div>
+                  <div className="text-white font-bold">{theta.toFixed(1)}°</div>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={generateRandomTriangle} className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold rounded-lg shadow-lg transition-all duration-200 transform hover:scale-105 active:scale-95">🎯 다시 도전하기</button>
+              </div>
+            </div>
+          </div>
         </div>
-        
-        <button className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium">
-          다음 단계
-        </button>
-      </div>
+      )}
+
+      {/* CSS 애니메이션 정의 */}
+      <style>{`
+        @keyframes success-modal-fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes success-modal-scale-in {
+          from { transform: scale(0.7) translateY(20px); opacity: 0; }
+          to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        .animate-success-fade-in {
+          animation: success-modal-fade-in 0.3s ease-out forwards;
+        }
+        .animate-success-scale-in {
+          animation: success-modal-scale-in 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+        }
+      `}</style>
     </div>
   );
-}
+};
+
+export default RhaFeature;
 
 

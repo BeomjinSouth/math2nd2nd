@@ -34,8 +34,8 @@ export default function Home() {
         </p>
       </div>
 
-      {/* 모듈 링크: ch1/m1, ch3/m1, ch3/m2 로 이동하는 카드들 */}
-      <div className="mt-24 grid text-center lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left gap-4">
+      {/* 모듈 링크: ch1/m1, ch1/m2, ch3/m1, ch3/m2, ch4/m1 로 이동하는 카드들 */}
+      <div className="mt-24 grid text-center lg:w-full lg:max-w-5xl lg:grid-cols-5 lg:text-left gap-4">
         {/* CH1-M1: 이등변삼각형 밑각 */}
         <Link
           href="/ch1/m1"
@@ -104,6 +104,22 @@ export default function Home() {
           </h2>
           <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
             직각삼각형에서 빗변과 다른 한 변이 같으면 왜 합동일까?
+          </p>
+        </Link>
+
+        {/* CH4-M1: 삼각형의 내심 */}
+        <Link
+          href="/ch4/m1"
+          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
+        >
+          <h2 className={`mb-3 text-2xl font-semibold`}>
+            Chapter 4.1 내심{' '}
+            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
+              -&gt;
+            </span>
+          </h2>
+          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
+            세 각의 이등분선의 교점과 내접원의 성질을 탐구합니다.
           </p>
         </Link>
       </div>
