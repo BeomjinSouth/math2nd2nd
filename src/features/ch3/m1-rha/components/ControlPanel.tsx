@@ -62,7 +62,7 @@ const Quiz: React.FC = () => {
       </div>
       {showHint && (
         <div className="mt-3 text-sm p-3 bg-yellow-900/50 border border-yellow-700 text-yellow-300 rounded-md">
-          <b>힌트:</b> 빗변의 길이와 예각이 정해지면, 나머지 한 변의 길이(슬라이더가 나타내는 값 'e')도 
+          <b>힌트:</b> 빗변의 길이와 예각이 정해지면, 나머지 한 변의 길이(슬라이더가 나타내는 값 &#39;e&#39;)도 
           단 하나의 값으로 결정됩니다. 따라서 삼각형은 하나뿐입니다.
         </div>
       )}
@@ -74,7 +74,7 @@ const Quiz: React.FC = () => {
  * 메인 제어판 컴포넌트
  */
 const ControlPanel: React.FC<ControlPanelProps> = ({ 
-  gameState, h, theta, trueTheta, e, eMax, F, thetaAdjusted,
+  gameState, h, theta, trueTheta, e, eMax, thetaAdjusted,
   onSliderChange, onThetaSliderChange, onReset 
 }) => {
   
@@ -83,8 +83,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
    */
   const getInstruction = () => {
     switch (gameState) {
-      case GameState.Idle:
-        return '🎯 왼쪽에서 노란색 빗변(A-C)을 클릭해 RHA 탐구를 시작하세요.';
       case GameState.Sliding:
         if (!thetaAdjusted) {
           return '📐 먼저 각도 슬라이더를 조절하여 목표 각도에 맞춰보세요. (자석 효과가 도움을 줄 거예요!)';
@@ -124,7 +122,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       {/* 안내 메시지 */}
       <div className="bg-gray-700/50 rounded-lg p-4 mb-6">
         <p className="text-sm text-yellow-300 leading-relaxed">
-          {getInstruction()}
+          {getInstruction().replace(/'/g, "&#39;")}
         </p>
       </div>
 
@@ -174,6 +172,49 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
 
       {/* 슬라이더 제어 영역 - 개선된 UI */}
       <div className="space-y-4">
+        
+        {/* 성공 요약 카드 */}
+        {gameState === GameState.Success && (
+          <div className="rounded-xl border-2 border-emerald-500/40 bg-emerald-900/20 p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+              <h4 className="text-lg font-bold text-emerald-300">RHA 합동 성공</h4>
+            </div>
+            <div className="bg-gray-800/60 rounded-lg p-4 mb-4">
+              <div className="text-center mb-2">
+                <span className="text-green-300 font-semibold">직각(R)</span>
+                <span className="text-gray-400 mx-2">+</span>
+                <span className="text-blue-300 font-semibold">빗변(H)</span>
+                <span className="text-gray-400 mx-2">+</span>
+                <span className="text-purple-300 font-semibold">예각(A)</span>
+              </div>
+              <p className="text-sm text-gray-200 text-center leading-relaxed">
+                조건이 일치하여 단 하나의 삼각형이<br/>
+                <span className="text-cyan-300 font-semibold">유일하게 결정</span>되었습니다
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
+              <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-3 text-center">
+                <div className="text-blue-300">빗변 길이</div>
+                <div className="text-white font-bold">{(h / 25).toFixed(1)} cm</div>
+              </div>
+              <div className="bg-green-900/30 border border-green-500/30 rounded-lg p-3 text-center">
+                <div className="text-green-300">완성 각도</div>
+                <div className="text-white font-bold">{theta.toFixed(1)}°</div>
+              </div>
+            </div>
+            <button 
+              onClick={onReset}
+              className="w-full px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold rounded-lg shadow-md transition-transform duration-150 active:scale-95"
+            >
+              🎯 다시 도전하기
+            </button>
+          </div>
+        )}
         
         {/* 각도 슬라이더 - 우선순위 1 */}
         <div className={`relative p-4 rounded-lg border-2 transition-all duration-300 ${

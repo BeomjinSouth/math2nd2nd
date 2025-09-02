@@ -31,6 +31,13 @@ const ConstructionArea: React.FC<ConstructionAreaProps> = ({
   const height = 350;
   const origin = { x: width - 50, y: height - 50 }; // 오른쪽 아래를 원점으로 설정
 
+  // 여백이 있는 뷰박스 설정 (라인이 경계에서 잘려 보이지 않도록)
+  const viewMargin = 32;
+  const viewMinX = -viewMargin;
+  const viewMinY = -viewMargin;
+  const viewW = width + viewMargin * 2;
+  const viewH = height + viewMargin * 2;
+
   // E점 좌표 (세로축 위의 점)
   const E = { x: origin.x, y: origin.y - e };
   
@@ -46,7 +53,7 @@ const ConstructionArea: React.FC<ConstructionAreaProps> = ({
 
   return (
     <div className="w-full aspect-[4/3] relative">
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
+      <svg viewBox={`${viewMinX} ${viewMinY} ${viewW} ${viewH}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
         
         {/* 화살표 마커 정의 */}
         <defs>
@@ -118,6 +125,7 @@ const ConstructionArea: React.FC<ConstructionAreaProps> = ({
             className={`stroke-2 ${
               isSuccess ? 'stroke-green-400' : 'stroke-yellow-400'
             }`} 
+            strokeLinecap="round"
           />
         )}
 

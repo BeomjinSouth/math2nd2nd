@@ -183,28 +183,6 @@ const RhaFeature: React.FC = () => {
               RHA 합동 시각적 탐구
             </h1>
             
-            {/* 단계 표시 */}
-            <div className="flex items-center justify-center gap-2 mt-3">
-              <div className="flex items-center gap-2 text-sm text-gray-400">
-                <span className="w-2 h-2 bg-cyan-400 rounded-full"></span>
-                <span>빗변 선택</span>
-              </div>
-              <span className="text-gray-600">→</span>
-              <div className="flex items-center gap-2 text-sm text-gray-400">
-                <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
-                <span>각도 조절</span>
-              </div>
-              <span className="text-gray-600">→</span>
-              <div className="flex items-center gap-2 text-sm text-gray-400">
-                <span className="w-2 h-2 bg-blue-400 rounded-full"></span>
-                <span>위치 맞추기</span>
-              </div>
-              <span className="text-gray-600">→</span>
-              <div className="flex items-center gap-2 text-sm text-gray-400">
-                <span className="w-2 h-2 bg-green-400 rounded-full"></span>
-                <span>합동 완성</span>
-              </div>
-            </div>
           </div>
         </div>
       </header>
@@ -219,7 +197,7 @@ const RhaFeature: React.FC = () => {
             <div className="w-8 h-8 bg-cyan-500 rounded-lg flex items-center justify-center">
               <span className="text-white text-sm font-bold">📐</span>
             </div>
-            <h3 className="text-xl font-bold text-cyan-400">참조 삼각형</h3>
+            <h3 className="text-xl font-bold text-cyan-400">노란색 빗변 AC를 클릭!</h3>
             <span className="text-xs text-gray-400 bg-gray-700 px-2 py-1 rounded">ABC</span>
           </div>
           
@@ -230,9 +208,6 @@ const RhaFeature: React.FC = () => {
                 <span className="text-yellow-400 text-lg">👆</span>
                 <span className="text-yellow-300 font-semibold">시작하기</span>
               </div>
-              <p className="text-sm text-gray-300">
-                아래 삼각형에서 <span className="text-yellow-400 font-semibold">노란색 빗변 AC</span>를 클릭해주세요!
-              </p>
             </div>
           )}
           
@@ -284,55 +259,7 @@ const RhaFeature: React.FC = () => {
         </div>
       </main>
 
-      {/* 성공 모달 */}
-      {gameState === GameState.Success && (
-        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 animate-success-fade-in">
-          <div className="relative max-w-md mx-4">
-            <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 via-emerald-500/20 to-teal-500/20 rounded-2xl blur-xl animate-pulse"></div>
-            <div className="relative bg-gray-800/95 backdrop-blur-sm border-2 border-green-500/50 rounded-2xl shadow-2xl p-8 text-center transform animate-success-scale-in">
-              <div className="relative mb-6">
-                <div className="w-20 h-20 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto">
-                  <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
-                  </svg>
-                </div>
-                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-2">
-                  <span className="text-yellow-400 text-2xl animate-bounce">✨</span>
-                </div>
-              </div>
-              <h2 className="text-3xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent mb-3">RHA 합동 성공!</h2>
-              <div className="bg-gray-700/50 rounded-lg p-6 mb-6">
-                <div className="text-center mb-4">
-                  <div className="flex items-center justify-center gap-2 mb-3">
-                    <span className="text-green-400 font-semibold text-lg">직각(R)</span>
-                    <span className="text-gray-400">+</span>
-                    <span className="text-blue-400 font-semibold text-lg">빗변(H)</span>
-                    <span className="text-gray-400">+</span>
-                    <span className="text-purple-400 font-semibold text-lg">예각(A)</span>
-                  </div>
-                  <p className="text-gray-300 text-base leading-relaxed">
-                    조건이 일치하여 단 하나의 삼각형이<br/>
-                    <span className="text-cyan-400 font-semibold">유일하게 결정</span>되었습니다!
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3 mb-6 text-sm">
-                <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-3">
-                  <div className="text-blue-300 font-medium">빗변 길이</div>
-                  <div className="text-white font-bold">{(h / 25).toFixed(1)} cm</div>
-                </div>
-                <div className="bg-green-900/30 border border-green-500/30 rounded-lg p-3">
-                  <div className="text-green-300 font-medium">완성 각도</div>
-                  <div className="text-white font-bold">{theta.toFixed(1)}°</div>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <button onClick={generateRandomTriangle} className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold rounded-lg shadow-lg transition-all duration-200 transform hover:scale-105 active:scale-95">🎯 다시 도전하기</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 성공 모달 제거: 성공 요약은 제어판에서 표시 */}
 
       {/* CSS 애니메이션 정의 */}
       <style>{`
