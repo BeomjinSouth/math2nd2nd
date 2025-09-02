@@ -236,9 +236,6 @@ const RhaFeature: React.FC = () => {
             </div>
           )}
           
-          <p className="text-sm text-gray-400 mb-4">
-            노란색 빗변을 클릭하여 RHA 탐구를 시작하세요
-          </p>
           <ReferenceTriangle A={triangleA} B={triangleB} C={triangleC} onHypotenuseSelect={handleHypotenuseSelect} gameState={gameState} />
         </div>
         
